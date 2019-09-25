@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en"><head>  
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <title>Deep Learning Class Project
+  | Georgia Tech | Spring 2019: CS 4803 / 7643</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+<!-- Le styles -->  
+  <link href="css/bootstrap.css" rel="stylesheet">
+<style>
+table, th, td {
+  border: 1px solid black;
+}
+body {
+padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+}
+.vis {
+color: #3366CC;
+}
+.data {
+color: #FF9900;
+}
+</style>
+  
+<link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+</head>
+
+<body>
+<div class="container">
+<div class="page-header">
+
+<!-- Title and Name --> 
+<h1>Deep Dishes</h1> 
+<hr>
+
+
+<!-- Goal -->
+<h2>Abstract</h2>
+
+In this project, we explore recipe generation via image feature extraction. We build upon existing work on recipe image feature retrieval to construct an ingredient-verb pairing framework, and propose an autonomous recipe text generation model. We show that by combining several deep models, we can generate complex domain-specific sequences like recipes. This research also demonstrates applications to existing image recipe retrieval work in conjunction utilizing our novel ingredient-verb entity domain knowledge.
+
+<br><br>
+<!-- figure -->
+<h2>Figure</h2>
+This represents our three-step process from encoding image features to decode ingredients and use knowledge graphs to generate more ingredients and then pass the embeddings into sequential model to generate the output recipe.
+
+<br><br>
+<!-- Main Illustrative Figure --> 
+<div style="text-align: center;">
+<img style="height: 600px;" alt="" src="images/illustration.png">
+<p style="text-align: center">Figure 1: Flowchart of Deep Dishes</p>
+
+</div>
+
+<br><br>
+<!-- Introduction -->
+<h2>Introduction / Background / Motivation</h2>
+<h4>What did you try to do? What problem did you try to solve? Articulate your objectives using absolutely no jargon.</h4>
+In this project we would like to create a model to write recipes inspired by an input image.Our objectives can be broken down into the following: 
+<ol>
+<p></p>
+    <li>From an image output a list of possible ingredients and dish type</li>
+    <li>Match ingredient, verbs pairs based on subgoal 1 to impart domain-specific knowledge</li>
+    <li>Output a feasible formatted recipe using the found ingredients and actions</li>
+</ol>
+<h4>How is it done today, and what are the limits of current practice?</h4>
+
+Previous work has either focused on matching recipe-image cross-modal embeddings with recipes known a priori [3], or use naive representations such as co-occurrence matrices to inform simple sequence generation models without image features [2]. The former focuses on image-recipe retrieval for known images and recipes, while the latter uses simple methods for sequence generation without utilizing image features. In this project, we combine the complexities of recipe structure and food domain knowledge with image retrieval challenges to construct a novel problem space.<br/>
+<h4>Who cares? If you are successful, what difference will it make?</h4>
+Understanding the underlying knowledge of food preparation through images presents the possibility of training machines that provide valuable insights in sectors like public health, cultural heritage, and end-consumer food preparation. A solution to our problem proposition (i.e. oracle) could for example identify allergens or food safety hazards, posit preparation techniques tied to culture, and facilitate recipe sharing on social media platforms. Each of these problems areas are of interests from entities like public safety institutions or members of the food preparation industry.</br>
+</br>
+In addition, the proposed problem posits a challenge which extends current state of the art in image retrieval and captioning. In particular, image to recipe generation is a complex sequence generation task which requires domain knowledge to retrieve relevant features, infer plausible actions, and impart a specific ordered text structure. These added complexities push the current boundaries for image retrieval and image captioning research.</br>
+</br>
+    
+<br><br>
+<!-- Approach -->
+<h2>Approach</h2>
+<h4>What did you do exactly? How did you solve the problem? Why did you think it would be successful? Is anything new in your approach?</h4>
+</br>
+
+<h4>General Concept</h4>
+Our approach can be summarized into three layers. In the first layer, we begin with an image of a completed recipe and use a captioning model to extract a list of ingredients. We also extract a recipe archetype in the form of a title embedding to capture what kind of dish was made in the image. In the second layer, we use a BiLSTM to pair the previously outputted ingredients to verbs utilizing the title embedding as a feature. Finally, using a Sequence to Sequence model we use the inputted ingredient-verb pairs to output the full text recipe.</br>
+
+</br>
+
+This approach is new compared to the 1M Recipe [3] approach, which created multi-modal embeddings between images and their corresponding recipes. Our approach tries to extract information that makes logical sense and is human-readable at each stage. This way, any person can see the logic behind how the recipe was created. A primary reason why we thought that this approach would work is the fact that the previous work in cross-modal embeddings [3] similarly separated ingredient and verb entities while using CNNs to extract image embeddings with promising results. However, we streamline this approach and add various domain structure (like title information and domain action tagging) to further augment our strategy.</br>
+</br>
+
+
+<h5>Layer 1: Image-Captioning Model</h5>
+Using the 1M Recipe Dataset [3] images of food, we apply transfer learning on Resnet to extract images features as the encoder and then generate ingredients as the decoder. The output is ingredient description vectors. Firstly, trained Resnet layers were used to extract image features and train an encoder using image features. Secondly, processed features were then passed to LSTM model with attention layer to train a decoder model to learn the words distribution based on images. Words embeddings are initialized with the word2vec Google News model. The model converged on about 15 epochs , and the resulting output are ingredient word representation such as “black pepper”, “diced onions”, or “unsalted butter”.</br>
+</br>
+
+<h5>Layer 1: Title Embedding Model</h5>
+
+
+The title embedding model takes as input a recipe image and outputs an embedding which represents the corresponding recipe title. The data for the ground truth embedding was generated via the pretrained GoogleNews word2vec model. Using the pretrained word2vec model, recipe titles were converted into a 1x300 vector. A CNN was then trained for this regression task on 100,000 examples, utilizing MSE loss.</br>
+</br>
+
+
+<h5>Layer 2: Ingredient-Verb Tagger</h5>
+
+
+The Ingredient Verb Tagger takes as input a list of ingredients from the Captioning Model and tags a verb to each ingredient. The inspiration for this task was from derived from part of speech tagging in sentences.  Notably, the previous model can output the same ingredient more than one time if necessary, so multiple actions can be performed on the same ingredient. In order to complete this task, we had to parse the Recipe 1M dataset to get the verb- ingredient pair which proved to be challenging. After we parsed the data, we tried various models, including a Naive Bayes, Hidden Markov Model, and a BiLSTM CRF to complete this task. The best model we found to work was a simple BiLSTM model. More information on the various models we tried for Layer two can be found in the Failed Attempts and Experiment and Results section.</br>
+</br>
+
+A BiLSTM is a type of Recurrent Neural Network (RNN) that is specifically made to hold long term dependencies in both directions, the past and the present. The BiLSTM differs from a regular LSTM in that the sequence information is first feed forward into the network and then backwards into the network. LSTM in general, differ from a vanilla RNN in that an LSTM has forget gates so that the model will learn what dependencies in the past to remember and what to forget. We thought that the BiLSTM would be the best model for the ingredient-verb tagging since recipes in general would perform some actions in the beginning of the recipe on an ingredient and use the result later on in the recipe. </br>
+</br>
+
+<h5>Layer 3: Full Text Recipe Generation</h5>
+
+<!-- Main Illustrative Figure --> 
+<div style="text-align: center;">
+<img style="height: 400px;" alt="" src="images/LSTM.png">
+<p style="text-align: center">Figure 2: Model Architecture [10]</p>
+
+</div>
+
+First, we built a baseline model to generate recipe from the given set of ingredients. We used the idea of seq2seq RNN to generate recipe from the ingredients. A good amount of work has already been done in generating sequences given other sequence as input. Seq2Seq RNN is a basic approach to solve these problems, since we have a sequence of ingredients as input and we want a corresponding recipe as output. As a proof of concept, we took a relatively small subset of 10,000 recipes from the Recipe1M [3] data. We did some preprocessing and included only the recipes which have at most 10 ingredients and at most 50 words in the recipe. Then, we converted recipes and the ingredients into one single text file (they were broken up into individual ingredients and recipes in the original dataset). Each line of the text file contains the recipes which is tab separated from the ingredients. The files were all in Unicode, and to simplify we turned Unicode characters to ASCII, made everything lowercase, and trimmed punctuation. </br>
+</br>
+To train our model, we turned the ingredients and recipes into something the neural network can understand, which of course means numbers. Each sentence in ingredient/recipe is split into words and turned into a Tensor, where each word is replaced with the index. To ensure that all of the inputs and outputs have standardized length, we first apply a special <END> token to each of the list of ingredients and list of instructions before applying <PAD> tokens to the list of ingredient tokens until its length is 10 and to the list of instructions tokens until its length is 50. Additionally, for the instructions list (which will serve as the output of our model), we also prepend a special <START> token. We also used word2vec for our pre-trained word embeddings, which can transform words into vectors, so that words with similar meaning end up laying close to each other. Moreover, it allows us to use vector arithmetics to work with analogies. In terms of implementation, we can do it in two ways, either using context to predict a target word (known as continuous bag of words) or using a word to predict a target context, which is called skip-gram and more often used under large datasets.</br>
+</br>
+In addition, we have also used Teacher forcing and Scheduled Sampling. Teacher Forcing also known as maximum likelihood sampling refers to using real target outputs as next input when training. The solution to teacher-forcing problem is known as Scheduled Sampling. We simply alternate between target values and predicted values when training. We randomly chose to use teacher forcing with an if statement while training - sometimes we'll feed use real target as the input (ignoring the decoder's output), sometimes we'll use the decoder's output. While training, we try to optimize the negative log likelihood loss. </br>
+</br>
+Secondly, we changed the vanilla RNN cell unit to LSTM in the Seq2Seq model because of the relative length of the input and output sequences. The model architecture shown in Figure 2 consists of two independent submodules: first, a LSTM encoder that run over a sequence of ingredient embeddings and store the last hidden state outputted by the LSTM. The last hidden state also named latent vector captures the meaning of the input sequence and will be fed as input for the decoder to generate our target recipe sequence in decoder part. Second, a decoder that takes this latent vector as primary input and outputs a series of token that represents the instructions with the help of softmax function. We also increase the length of output vector in decoder from 50 to a higher value like 100, 200, 300 and test its effectiveness. It turned out higher length could lead to better recipe generalizing performance though sacrifice the time complexity overall. More importantly, we applied attention mechanism which can allow the decoder to look at the input sequence selectively instead of a single vector which has to store all the information about the context. It turned out attention mechanism can successfully improve the final prediction performance in terms of quantitative BLEU score and human interactive check, especially when the input is a large sequence for example if the series of recipe information is size-intensive.</br>
+</br>
+Then we train our model on GPU with all the recipes from Recipe1M data [3] and fine tune the hyperparameters like hidden layer size, dropout value, learning rate, etc.. Currently our model can converge after reasonable amount of epoches with hidden layer size as 512, dropout value 0.15, and learning rate 0.005. In the future, we are going to replace with different RNN cell type like GRU to optimize it further.</br>
+</br>
+
+
+Why do we believe seq2seq will be successful? In general, seq2seq is a general-purpose encoder-decoder architecture widely supported by deep learning frameworks like Tensorflow or Pytorch. It has been widely used for machine translation, text summarization, conversational modeling, image captioning, etc. In this scenario, our problem can be phrased as encoding input data (with several types of data types supported) in one format and decoding it into another format. So we can construct the right map taking as input a set of ingredients and produces a series of instructions that dictate how the pre-specified ingredients should be combined.</br>
+</br>
+Why an attention model? A potential issue with above encoder-decoder model encoding the input sequence to one fixed length vector from which to decode each output time step. This issue is believed to be more of a problem when decoding long sequences, so that why we want to adapt attention model which was developed by Google to fix it. Specifically, attention mechanism allows stages of the output RNN to learn how to refer back to specific hidden states of the input RNN. In the context of recipe prediction, we expect that attention will help significantly as recipe instructions tend to reference ingredients in the right order, thus our model has a semantic understanding of when a particular set of ingredients is to be used in producing a coherent recipe accordingly.</br>
+</br>
+
+<h4>What problems did you anticipate? What problems did you encounter? Did the very first thing you tried work?</h4>
+
+Throughout the project, we encountered many difficulties ranging from issues with extracting features from the 1M Recipe [3] dataset, to changing a step of our approach.  Below details the various problems that we encountered and the results of some failed attempts. </br>
+</br>
+
+<ol>
+    <li>Extracting Features From Images: Recipe1M [3] dataset has 100GB of training/ validating/ testing images and 300 MB of texts. We experienced difficulties simply downloading and loading the data to train the CNN model given memory and computing issues. Similarly, it’s challenging to preprocessing the raw dataset to make it qualifying to feed for our deep learning model.</li>
+
+<li>Object Detection: At the beginning, we were hoping to do ingredient detection on the image, however, object detection relies on label data with bounding box. Our dataset didn’t have good labels for that. We decided to switch our approach to image captioning where we feed in images and ingredients pair. In terms of cuisine classification, the groupings are not clear from the dataset so which adds difficulty for object classification which requires labels.  </li>
+
+<li>Extracting Ingredient-Verb Pairs from Recipe Text: One issue that we encountered was using the Natural Language Toolkit’s (NLTK)[1] part of speech tagger. As part of creating the datasets, we had to extract the verbs present in each recipe. However, occasionally, it would tag the sentence incorrectly and nouns were introduced in the set of verbs. Thus, when making the model to pair together verbs and actions, we would get faulty outputs. In addition, in order to tag verbs to ingredients it was necessary to parse the recipes in the Recipe 1M Dataset to match which verb in the instruction matches what ingredient. This task proved to be difficult as it requires a separate task called coreference resolution, which is beyond the scope of this project. Instead, we used a naïve approach and simply paired each verb in the instruction if the ingredient appeared in the instruction. The part of speech tagging was implemented using python NLTK [1]. This method produced noisy data as the NLTK tagging was not perfect and sometimes mislabeled words. In addition, sometimes in recipes do not mention all ingredients. For example, a recipe could read “combine all ingredients in a bowl”. Despite these limitations however, we still were able to produce a feasible low-regularization models because of the large volume of data.
+</li>
+
+<li>Failed Attempt 1 - Knowledge Graph Approach: To enhance the base RNN autonomous recipe generation, we tried to develop a knowledge base of relations among ingredients as a set of ingredient entities and edges. We first defined a set of ingredient entities, which is provided in Recipe 1M. The quantity, unit, name, and comments from a corpus of recipe instructions are distinguished for each unique ingredient occurrence within a given recipe, and a global set of ingredient names are catalogued. A dataset of generated for the knowledge graph embedding generation, whereby ingredients in recipes together are grouped.Our initial idea was that following the ingredient entity definitions, a knowledge graph of the relationships between entities is generated. This is accomplished via multi-sense LSTMs (MS-LSTMs) for text to entity mappings [4]. Starting with an empty edgelist of nodes consisting of the global entity set, textual features are extracted from the recipe instruction corpus. In the training set, training examples are discretized upon recipes in the skipgram input and words are tokenized. Upon training to generate knowledge graph embeddings, textual features are extracted via the DeepWalk software [5]. These inputs are then fed to an MS-LSTM, and the entity vectors are outputted along with their corresponding learned edges.Issues arose due to the intractability of the ingredient space. After training MS-LSTMs on multiple machines, memory issues arose on all attempts. With smaller or condensed knowledge representations, mappings were relatively sparse and thus were not informative. Considering these issues, attempting a direct pairing approach seemed more feasible.
+ </li>
+
+<li>Failed Attempt 2: At first, we tried to implement Layer 2 with only the ingredient list outputted by Layer 1 and the BiLSTM did not do very well, getting an average accuracy of 0.11 on the validation set.  To debug this situation, we started to add more layers, train for longer, and add more data. Despite these efforts using this model we were unable to get descent outputted verbs using only the sequence of ingredients. The reason why this proved to be unsuccessful since many recipes use the same ingredients to make completely different dishes. For example, if the captioning model outputted a list of vegetables, it would be impossible to determine if we should make a salad or just cook all of the vegetables together. Because, of this idea, we changed our approach to also extract the title in the form of title embeddings from the image in addition to the ingredients in hope that it would pass on the necessary dish archetype information from the image to the verb tagger to make more educated pairings. Below is our loss curve and dev set accuracy curve for the BiLSTM without using the title embeddings. As shown in the curve, the best validation accuracy, we could get was 38%, which is not ideal. </li>
+    
+<img style="height: 200px;" alt="" src="images/Failed_LSTM.png">
+<p style="text-align: center">Figure 3: Failed Attempt of BiLSTM with suboptimal accuracy</p>
+
+<li>Failed Attempt 3:Ingredient-Verb Pairing Model with BiLSTM and Conditional Random Field: We tried to augment our BiLSTM with a Conditional Random Field. However, because a Conditional Random Field requires the creation of a transition matrix which just became intractable as we added more and more input data using our computing resources.</li>
+
+</ol>
+
+<br><br>
+<!-- Results -->
+<h2>Experiments and Results</h2>
+<h4>How did you measure success? </h4>
+
+Overall, we had several different models for our project and for measuring success we had different evaluation metric for each of the models. Following are the metrics used to measure success for each:</br>
+</br>
+
+<h5>Image Captioning Model</h5>
+We have used Jaccard Index[1] as a measure to evaluate our Image Captioning Model. Jaccard Index is a measure of similarity for the two sets of data and it has a range from 0% to 100%. It compares members for two sets to see which members are shared and which are distinct. It is also known as intersection over union and is a “statistic used for gauging the similarity and diversity of sample sets. The Jaccard coefficient measures similarity between finite sample sets, and is defined as the size of the intersection divided by the size of the union of the sample sets”[2]If A and B are both empty, we define J(A,B) = 1</br>
+</br>
+For our model, we have considered subsets as equivalent for calculation of Jaccard Index. For example, “ham” and “hams” are considered equivalent substrings while calculating the intersection.</br>
+</br>
+
+<!-- Main Illustrative Figure --> 
+<div style="text-align: center;">
+<img style="height: 50px;" alt="" src="images/jaccard.png">
+<p style="text-align: center">Figure 4: Jaccard Index [1] </p>
+</div>
+<h5>BiLSTM Tagger Model</h5>
+
+We simply used Accuracy as our metric to evaluate performance of BiLSTM tagger model. Simply speaking Accuracy is the fraction of predictions that our model got right. Mathematically, it’s number of correct predictions out of total number of predictions. For our model, we calculated fraction of correct ingredient-verb pairs out of total pairings found to get the accuracy.</br>
+</br>
+
+<h5>Seq2Seq Model</h5>
+We used standard metric called BLEU (Bilingual Evaluation Understudy) score to measure success of Seq2Seq model. Wikipedia defines BLEU score as follows - “It is an algorithm for evaluating the quality of text which has been machine-translated from one natural language to another. Quality is considered to be the correspondence between a machine's output and that of a human: "the closer a machine translation is to a professional human translation, the better it is" – this is the central idea behind BLEU. BLEU was one of the first metrics to claim a high correlation with human judgements of quality, and remains one of the most popular automated and inexpensive metrics.</br>
+</br>
+
+For our LSTM Seq2Seq model, we give sequence of ingredient-verb pair and title embedding of the image as input. It generates sequence of recipes. We compare the generated sequence of recipes to the actual sequence of recipes to calculate BLUE score.</br>
+</br>
+
+
+<h4>What datasets did you use and what experiments did you carry out? </h4>
+
+The dataset used was from MIT Recipe 1M [3]. The dataset contai ns over 1 million recipes with titles, ingredients, instructions, and around 13 million food images. Recipe 1M was scraped from a variety of cooking websites and is the largest publicly available collection of recipe data. Since the recipes were scraped from variety of cooking websites, many of them are user contributed content. Hence, typos and highly unusual recipes were common occurrences in our dataset.Following are the experiments that we did with each of our models:</br>
+</br>
+
+<h5>Image Captioning Model</h5>
+Image captioning model centers on quality of images and the representation of ingredients. I focused on how to extract the best subset of relevant words to train the model. Firstly, it was about subsetting of words. After removing stop words, the training results would display only the basic ingredients like salt and pepper for any dishes and fail to generalize well. In addition, the results shows a lot of nouns of measurement and numbers such as “1 cup of “ or “1 teaspoon of”. </br>
+</br>
+<!-- Main Illustrative Figure --> 
+<div style="text-align: center;">
+<img style="height: 200px;" alt="" src="images/failedCaption.png">
+<p style="text-align: center">Figure 5: Too many common ingredients and nouns of measurement </p>
+</div>
+As a resolution, we removed numbers and nouns of measurement in the second trial. To avoid junk words, I increased the frequency of occurrence of words to be included as word embeddings as 2. However, I noticed that the model doesn’t converge quickly since the word embeddings of 512 dimensions are initialized randomly and it would take some iterations before the word vector converge to reasonable representation. </br>
+</br>
+So for next trial, we then adopted Google News word2vec model to obtain pre-trained word embeddings. The loss curve becomes more reasonable and model converged after 15 iterations.  </br>
+
+
+<h5>Image to Title Vector </h5>
+The dataset for the title vector CNN was extrapolated from the Recipe 1M [3] dataset processed via the pretrained GoogleNews word2vec model. Various training experiments were carried out during hyperparameter tuning to minimize corresponding distances in the regression task.</br>
+</br>
+
+<div style="text-align: center;">
+<img style="height: 200px;" alt="" src="images/Title_LearningCurve.png">
+<p style="text-align: center">Figure 6: Title Classification Model MSE Loss Curve </p>
+</div>
+
+<h5>BiLSTM Tagger</h5>
+
+The dataset for the BiLSTM Tagger was extrapolated from the Recipe 1M [3] dataset. The list of ingredients in each recipe was already given by the Recipe 1M dataset. However, there were some errors in these lists with including quantity units like cups and ounces. For each recipe in the dataset, I used Python NLTK [1] to parse each instruction into sentences and found the part of speech of each word in the sentence. We used a naïve approach and simply paired each verb in the instruction if the ingredient appeared in the instruction. This method did result in noisy data. In future work, it would be nice to use a smarter pairing method using coreference resolution. </br>
+</br>
+
+<h5>Seq2Seq</h5>
+The dataset for the Seq2Seq model was extrapolated from Recipe 1M [3] dataset. That is, the list of ingredients information and the series of recipe information. However, there were some errors/noise in some specific recipe like unreasonable sentences and ingredients do not match with the given recipe, so we clean the dataset firstly and create a series of ingredients and recipe to feed into encoder and decoder respectively in Seq2Seq model. We run the Seq2Seq model using vanilla RNN as a baseline then optimize it using LSTM, it turns out LSTM performs better in terms of generalizing well as a whole. In the future, we are going to try different RNN cell type like GRU to see if there is any kind of improvement. </br>
+</br>
+
+<h4>What were the results, both quantitative and qualitative?</h4>
+
+After training all models on GPUs for at least 5 epochs, we obtained nice learning curves to confirm model convergence and generalization of word distributions. The model was able to produce qualitatively sound recipe some of the times upon review. Following are the results from the models we developed </br>
+</br>
+
+<h5>Image Captioning Model</h5>
+Below is the graph of BLEU score for our Image Captioning model. The vertical axis represents the BLEU score and the horizontal axis represents number of epochs.</br>
+
+</br>
+As evident from the above graph, our model has not fully converged even after 24 epochs. However, we see flattening of the curve after 16th epoch. Due to time limitations and limitation of computational resources, we were not able to run the model for more epochs. In future, we would love to run our model for epochs and observe improvement in the result. The BLEU score of the developed model is pretty low, approximately 0.048. We calculated Jaccard Index of the model as well. The captioning model managed to achieve a 21% accuracy based on a Jaccard index, where subsets are considered equal.</br>
+</br>
+
+<div style="text-align: center;">
+<img style="height: 300px;" alt="" src="images/Spaghetti.png">
+<img style="height: 300px;" alt="" src="images/Spaghetti_Caption.png">
+<p style="text-align: center">Figure 7: Sample Input and Output Captioning</p>
+</div>
+
+Qualitatively, above are one of the results from the Image Captioning model. The input is Spaghetti image and the output are the ingredients as image captions. We observe spaghetti, garlic, clove, pepper etc. as image captions for our input image which is quite interesting and reasonable. </br>
+</br>
+
+<h5>BiLSTM Tagger</h5>
+
+As a baseline, we implemented a simple Naïve Bayes approach for ingredient verb tagging. As expected, the model was rudimentary and did not produce an expressive model . The dev accuracy using Naïve Bayes was 0.0045 on one batch of the data. Some of the reasons why the Naive Bayes approach did not work very well is the fact that there are many different ingredients, and verbs used in the dataset causing the probabilities of some verbs to be very small. In addition, the Naive Bayes approach does not count for the entire sequence. </br>
+</br>
+We trained our BiLSTM tagger model for 10 epochs using 16 batches of our Recipe 1M data. One batch of the data contains 10,000 recipes. Notably, because the dataset is very noisy very little regularization is used. Below are the loss curve and accuracy curve on the training set. We have used cross-entropy loss function to define the loss and accuracy is defined in the same way as discussed above.</br>
+</br>
+
+<div style="text-align: center;">
+<img style="height: 150px;" alt="" src="images/BiLSTM_ModelLoss.png">
+<p style="text-align: center">Figure 8: BiLSTM Loss Curve and Accuracy Over Iterations</p>
+</div>
+
+The loss curve has almost converged to 1.75 and the accuracy curve shows a convergence at around 59%. The results shown are the ones including the title input. As mentioned in Failed Attempt section, we got accuracy of around 38% when we built the model without title input.</br>
+</br>
+
+
+Sample Input and Output</br>
+
+We represent sample output from our BiLSTM tagger model above. We have shown two inputs and corresponding output. The inputs are the sequence of ingredients and the output is sequence of corresponding verbs which denotes actions. As we can see, the model is giving us reasonable results.</br></br>
+<br>
+
+<div style="text-align: center;">
+<img style="height: 400px;" alt="" src="images/BiLSTMSampleOutput.png">
+<p style="text-align: center">Figure 9: BiLSTM Sample Ouput</p>
+</div>
+<br>
+
+<h5>Seq2Seq Model</h5>
+    
+The Seq2Seq model was trained for 10,000 epochs. We plot loss curve for the model. We have used NLLLoss function in PyTorch. NLLLoss is the negative log likelihood loss. It is generally useful to train a classification problem which has multiple classes.</br></br>
+
+<div style="text-align: center;">
+<img style="height: 300px;" alt="" src="images/NLL_Loss.png">
+<p style="text-align: center">Figure 10: Seq2Seq Model Loss Curve</p>
+</div>
+
+The loss curve shows that it has converged after about 1500 epochs to a negative log likelihood loss value of around 3.6 The Seq2Seq model achieved a BLEU score of 0.06. Some of the accuracy results were due to the noisiness of the dataset as well as the large verb space in the dataset.</br></br>
+
+<div style="text-align: center;">
+<img style="height: 600px;" alt="" src="images/Sample_Recipe.png">
+<p style="text-align: center">Figure 11: 2 Sample Recipes from Seq2Seq Model</p>
+</div>
+
+We present above qualitative results from the Seq2Seq model. With the input of ingredients and verb pairs along with title embedding, we have generated corresponding Recipes. The results shown are one of the best that we got and they seem to be quite interesting and reasonable.</br></br>
+
+<h4></h4>
+
+<h2>Current Status</h2>
+<h4>Do the results make sense? Why or why not? Describe what kind of visualization/analysis you performed in order to verify that your results 1) are correct and 2) explain differences in performance from what was expected (e.g. what appeared in papers). Provide specific claims about why you think your model is or is not doing better, and justify those with qualitative and quantitative experiments (not necessarily just final accuracy numbers, but statistics or other data about what the model is doing).</h4>
+
+Our model tends to have structurally sound and logically ordered recipe text instances compared to naive captioning baselines, but scored low on common quantitative benchmarks. Take the above two sample output of ‘cheesy creamy potatoes’ and ‘mussels in saffron’ in the experiment section: the retrieved recipes are composed of many steps which are reasonable and accurate while matching with the corresponding given image data, which implies from a human evaluation standpoint our model succeeds. </br>
+</br>
+Though the model might not perform very strongly when evaluated by traditional metrics, which is highly affected by the input data noise, our model appears to generalize quite well. Importantly, the model demonstrates categorical inference: that is, when the list of ingredients contains any kind of seafood like mussel in above example, our model is high likely to infer that the recipe must be something that consists of many seafood ingredients like mussels, lobster, crabs and so on. </br>
+</br>  
+Further work would be continued to explored to help the model better generalize. For example, pre-trained word embeddings and different RNN cell types like GRU are possible approaches to improvements. A radical approach might be to redesign the architecture to better make use of the relationships between the ingredients and instructions of particular recipes. From the perspective of metrics evaluation, better evaluation method besides BLEU for coherence and effectiveness of the generated results need to be devised or incorporated. Though a human subject survey would have been ideal for evaluation, this was outside the scope of the project.</br>
+
+Below is a sample from a naive captioning baseline, which had similar BLEU scores (0.06) but worse qualitative results which was essentially nonsense:</br>
+
+</br>
+<div style="text-align: center;">
+<img style="height: 300px;" alt="" src="images/NaiveOutput.png">
+<p style="text-align: center">Figure 12: Naive Captioning Baseline Output</p>
+</div>
+
+
+<h2>Bibliography</h2>
+[1] Bird, Steven, Edward Loper and Ewan Klein (2009). Natural Language Processing with Python. O'Reilly Media Inc.</br>
+[2] L. A. M. Bostan, “Ingredient-driven Recipe Generation Using Neural and Distributional Models,” Jul. 2017</br>
+[3] A. Salvador, N. Hynes, Y. Aytar, J. Marin, F. Ofli, I. Weber, and A. Torralba, “Learning Cross-Modal Embeddings for Cooking Recipes and Food Images,” 2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2017.</br>
+[4] Dimitri Kartsaklis, Mohammad Taher Pilehvar: “Mapping Text to Knowledge Graph Entities using Multi-Sense LSTMs”, 2018; arXiv:1808.07724</br>
+[5] Bryan Perozzi, Rami Al-Rfou: “DeepWalk: Online Learning of Social Representations”, 2014; DOI: 10.1145/2623330.2623732</br>
+[6] K M Annervaz, Somnath Basu Roy Chowdhury: “Learning beyond datasets: Knowledge Graph Augmented Neural Networks for Natural language Processing”, 2018; arXiv:1802.05930.</br>
+[7] Kristian J Hammond. "Learning to anticipate and avoid planning problems through the ex­planation of failures". In: Intelligence 5.7 (1986), p. 8.</br>
+[8] Mirella Lapata and Regina Barzilay. "Automatic evaluation of text coherence: Models and representations". In: IJCAI. Vol. 5. 2005, pp. 1085-1090.</br>
+[9] Chloe Kiddon, Luke Zettlemoyer, and Yejin Choi. "Globally coherent text generation with neural checklist models". In: Proceedings of the 2016 Conference on Empirical Methods in Natural Language Processing. 2016, pp. 329-339.</br>
+[10] Dev Bhargava, Thomas Teisberg. “Recipe for Disaster: A Seq2Seq Model for Recipe Generation” </br>
+[11] Minh-Thang Luong, Hieu Pham, and Christopher D. Manning. "Effective Approaches to Attention-based Neural Machine Translation". In: CoRR abs/1508.04025 (2015). arXiv: 1508.04025.URL:http://arxiv.org/abs/1508.04025.</br>
+[12] Definition of Jaccard index from Wikipedia - https://en.wikipedia.org/wiki/Jaccard_index</br>
+[13]  Definition of BLEU Score from Wikipedia - https://en.wikipedia.org/wiki/BLEU</br>
+
+</body></html>
